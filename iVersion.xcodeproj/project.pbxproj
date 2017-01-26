@@ -14,6 +14,8 @@
 		00BFFA691E3A6F2C00BA1AF3 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 00BFFA671E3A6F2C00BA1AF3 /* LaunchScreen.storyboard */; };
 		00BFFA741E3A6F2D00BA1AF3 /* iVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BFFA731E3A6F2D00BA1AF3 /* iVersionTests.swift */; };
 		00BFFA7F1E3A6F2D00BA1AF3 /* iVersionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BFFA7E1E3A6F2D00BA1AF3 /* iVersionUITests.swift */; };
+		00F07D2C1E3A8E3800BCBDE7 /* iVersion.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 00F07D2B1E3A8E3800BCBDE7 /* iVersion.bundle */; };
+		00F07D2E1E3A8E7C00BCBDE7 /* iVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F07D2D1E3A8E7C00BCBDE7 /* iVersion.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +49,8 @@
 		00BFFA7A1E3A6F2D00BA1AF3 /* iVersionUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iVersionUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00BFFA7E1E3A6F2D00BA1AF3 /* iVersionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iVersionUITests.swift; sourceTree = "<group>"; };
 		00BFFA801E3A6F2D00BA1AF3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		00F07D2B1E3A8E3800BCBDE7 /* iVersion.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = iVersion.bundle; sourceTree = "<group>"; };
+		00F07D2D1E3A8E7C00BCBDE7 /* iVersion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = iVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +82,7 @@
 			isa = PBXGroup;
 			children = (
 				00BFFA5D1E3A6F2C00BA1AF3 /* iVersion */,
+				00F07D2A1E3A8E0A00BCBDE7 /* Classes */,
 				00BFFA721E3A6F2D00BA1AF3 /* iVersionTests */,
 				00BFFA7D1E3A6F2D00BA1AF3 /* iVersionUITests */,
 				00BFFA5C1E3A6F2C00BA1AF3 /* Products */,
@@ -123,6 +128,15 @@
 				00BFFA801E3A6F2D00BA1AF3 /* Info.plist */,
 			);
 			path = iVersionUITests;
+			sourceTree = "<group>";
+		};
+		00F07D2A1E3A8E0A00BCBDE7 /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				00F07D2B1E3A8E3800BCBDE7 /* iVersion.bundle */,
+				00F07D2D1E3A8E7C00BCBDE7 /* iVersion.swift */,
+			);
+			name = Classes;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -234,6 +248,7 @@
 			files = (
 				00BFFA691E3A6F2C00BA1AF3 /* LaunchScreen.storyboard in Resources */,
 				00BFFA661E3A6F2C00BA1AF3 /* Assets.xcassets in Resources */,
+				00F07D2C1E3A8E3800BCBDE7 /* iVersion.bundle in Resources */,
 				00BFFA641E3A6F2C00BA1AF3 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -261,6 +276,7 @@
 			files = (
 				00BFFA611E3A6F2C00BA1AF3 /* ViewController.swift in Sources */,
 				00BFFA5F1E3A6F2C00BA1AF3 /* AppDelegate.swift in Sources */,
+				00F07D2E1E3A8E7C00BCBDE7 /* iVersion.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,6 +519,7 @@
 				00BFFA851E3A6F2D00BA1AF3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		00BFFA861E3A6F2D00BA1AF3 /* Build configuration list for PBXNativeTarget "iVersionTests" */ = {
 			isa = XCConfigurationList;
@@ -511,6 +528,7 @@
 				00BFFA881E3A6F2D00BA1AF3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		00BFFA891E3A6F2D00BA1AF3 /* Build configuration list for PBXNativeTarget "iVersionUITests" */ = {
 			isa = XCConfigurationList;
@@ -519,6 +537,7 @@
 				00BFFA8B1E3A6F2D00BA1AF3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
