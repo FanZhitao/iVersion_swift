@@ -26,18 +26,20 @@ class iVersion : NSObject {
         if Holder.bundle == nil {
             var bundlePath: String? = Bundle(for: iVersion.self).path(forResource: "iVersion", ofType: "bundle")
             if self.useAllAvailableLanguages {
+                /*
                 Holder.bundle = Bundle(path: bundlePath!)
-                var language: String = NSLocale.preferredLanguages().count ? NSLocale.preferredLanguages()[0] : "en"
-                if !Holder.bundle?.localizations()?.contains(language) {
+                var language: String = NSLocale.preferredLanguages.count ? NSLocale.preferredLanguages[0] : "en"
+                if !Holder.bundle?.localizations?.contains(language) {
                     language = language.components(separatedBy: "-")[0]
                 }
-                if Holder.bundle?.localizations()?.contains(language) {
+                if Holder.bundle?.localizations?.contains(language) {
                     bundlePath = Holder.bundle?.path(forResource: language, ofType: "lproj")
                 }
+ */
             }
             Holder.bundle = Bundle(path: bundlePath!) ?? Bundle.main
         }
-        defaultString = bundle?.localizedString(forKey: key, value: defaultString, table: nil)
+        //defaultString = Holder.bundle?.localizedString(forKey: key, value: defaultString, table: nil)
         return Bundle.main.localizedString(forKey: key, value: defaultString, table: nil)
     }
     
@@ -56,8 +58,8 @@ class iVersion : NSObject {
     }
     
     //application details - these are set automatically
-    var applicationVersion: String
-    var applicationBundleID: String
+    var applicationVersion: String?
+    var applicationBundleID: String?
     var appStoreCountry: String?
     
     //usage settings - these have sensible defaults
@@ -173,7 +175,18 @@ class iVersion : NSObject {
         }
     }
     
-    #if os(iOS)
+    private var showIgnoreButton : Bool {
+        get {
+            // TODO
+            return true
+        }
+    }
+    
+    private var showRemindButton : Bool {
+        get {
+            return true
+        }
+    }
     
     //manually control behaviour
     func openAppPageInAppStore() -> Bool {
@@ -184,15 +197,43 @@ class iVersion : NSObject {
     }
     
     func checkIfNewVersion() {
-        
-    }
-    
-    private var versionDetails: String {
-        get {
-            if self.viewedVersionDetails != nil {
-                return
+        if lastVersion == nil || showOnFirstLaunch || previewMode {
+            if (true) { // TODO: String compare
+                lastReminded = nil
+                var showDetails = versionDetails != nil
+                if showDetails && false { // TODO: iVersionShouldDisplayCurrentVersionDetails selector
+                    //showDetails = delegate?.iVersionShouldDisplayCurrentVersionDetails(versionDetails: versionDetails)
+                }
+                if showDetails && visibleLocalAlert == nil && visibleRemoteAlert == nil {
+                    visibleLocalAlert = showAlertWith(title: inThisVersionTitle, details: versionDetails, defaultButton: okButtonLabel, ignoreButton: nil, remindButton: nil)
+                }
             }
         }
+    }
+    
+    private func showAlertWith(title: String?, details: String?, defaultButton: String?, ignoreButton: String?, remindButton: String?) -> AnyObject {
+        var topController = UIApplication.shared.delegate?.window??.rootViewController
+        while topController?.presentedViewController != nil {
+            topController = topController?.presentedViewController
+        }
+        let alert = UIAlertController.init(title: title, message: details, preferredStyle: UIAlertControllerStyle.alert)
+        alert.addAction(UIAlertAction.init(title: downloadButtonLabel, style: UIAlertActionStyle.default, handler: nil))
+        if self.showIgnoreButton {
+            alert.addAction(UIAlertAction.init(title: ignoreButtonLabel, style: UIAlertActionStyle.cancel, handler: nil))
+        }
+        if self.showRemindButton {
+            alert.addAction(UIAlertAction.init(title: remindButtonLabel, style:UIAlertActionStyle.default, handler: nil))
+        }
+        topController?.present(alert, animated: true, completion: nil)
+        return alert
+    }
+    
+    private func didDismissAlert(alertView: AnyObject, buttonIndex: Int) {
+        let downloadButtonIndex = 0
+        let ignoreButtonIndex = showIgnoreButton ? 1 : 0
+        let remindButtonIndex = showRemindButton ? ignoreButtonIndex + 1 : 0
+        
+        let latestVersion = mostRecentVersionInDict(dict: remoteVersionsDict)
     }
     
     func shouldCheckForNewVersion() -> Bool {
@@ -201,11 +242,19 @@ class iVersion : NSObject {
     }
     
     func checkForNewVersion() {
-        
+        if !self.checkingForNewVersion {
+            self.checkingForNewVersion = true
+            self.performSelector(inBackground: #selector(checkForNewVersionInBackground), with: nil)
+        }
     }
     
-    private func mostRecentVersionInDict(dict: NSDictionary) -> String {
-        (dict.allKeys as NSArray).sortedArray(using: #selector(compareVersion)).last!
+    func checkForNewVersionInBackground() {
+        // TODO
+    }
+    
+    private func mostRecentVersionInDict(dict: NSDictionary?) -> String {
+        return "TODO"
+        //(dict.allKeys as NSArray).sortedArray(using: #selector(compareVersion)).last!
     }
     
     private func versionDetailsInDict(version: String, dict: NSDictionary) -> String {
@@ -215,9 +264,12 @@ class iVersion : NSObject {
         } else if versionData is [Any] {
             return (versionData as! NSArray).componentsJoined(by: "\n")
         }
+        return "TODO"
     }
     
     func versionDetails(since lastVersion: String, inDict dict: [AnyHashable: Any]) -> String {
+        return "TODO"
+        /*
         if self.previewMode {
             lastVersion = "0"
         }
@@ -239,19 +291,23 @@ class iVersion : NSObject {
             }
         }
         return newVersionFound ? details.trimmingCharacters(in: CharacterSet.newlines) : nil
+        */
     }
     
     
     // private properties
     private var remoteVersionsDict: NSDictionary?
-    private var downloadError: Error
+    private var downloadError: Error?
     private var versionDetails: String? {
         get {
+            /*
             if (self.viewedVersionDetails) {
                 return self.versionDetailsInDict(version: self.applicationVersion, dict: self.localVersionsDict())
             } else {
                 return self.versionDetails(since: self.lastVersion, inDict: self.localVersionsDict())
             }
+ */
+            return "TODO"
         }
     }
     private var visibleLocalAlert: AnyObject?
@@ -260,23 +316,21 @@ class iVersion : NSObject {
     
     
     private func urlEncodedString(_ string: String) -> String {
-        var stringRef: CFString = CFBridgingRetain(string)
+        return "TODO"
+        /*
+        var stringRef: CFString = CFBridgingRetain(string) as! CFString
         //clang diagnostic push
         //clang diagnostic ignored "-Wdeprecated-declarations"
         var encoded: CFString = CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault, stringRef, nil, CFSTR("!*'\"();:@&=+$,/?%#[]% "), kCFStringEncodingUTF8)
         //clang diagnostic pop
         
         return CFBridgingRelease(encoded)
+ */
     }
     
     private func downloadedVersionsData() {
-        #if !TARGET_OS_IPHONE
-            //only show when main window is available
-            if self.onlyPromptIfMainWindowIsAvailable && !NSApplication.shared.mainWindow() {
-                self.performSelector(#selector(self.downloadedVersionsData), withObject: nil, afterDelay: 0.5)
-                return
-            }
-        #endif
+// TODO
+        /*
         if self.checkingForNewVersion {
             //no longer checking
             self.checkingForNewVersion = false
@@ -345,6 +399,8 @@ class iVersion : NSObject {
                 }
             }
         }
+ */
+    }
     
     private func localVersionsDict() -> NSDictionary {
         // static var workaround
@@ -358,11 +414,14 @@ class iVersion : NSObject {
             } else {
                 var versionsFile: String = URL(fileURLWithPath: (Bundle.main.resourcePath)!).appendingPathComponent(self.localVersionsPlistPath!).absoluteString
                 Holder.versionsDict = NSDictionary.init(contentsOfFile: versionsFile)
-                if Holder.versionsDict. {
+                if Holder.versionsDict == nil {
                     // Get the path to versions plist in localized directory
+// TODO
+                    /*
                     var pathComponents: [Any] = self.localVersionsPlistPath.components(separatedBy: ".")
                     versionsFile = (pathComponents.count == 2) ? Bundle.main.path(forResource: pathComponents[0], ofType: pathComponents[1]) : nil
                     Holder.versionsDict = [AnyHashable: Any](contentsOfFile: versionsFile)
+ */
                 }
             }
         }
@@ -370,12 +429,27 @@ class iVersion : NSObject {
     }
     
     override init() {
-        super.init()
+        showOnFirstLaunch = false
+        groupNotesByVersion = false
+        //default settings
+        updatePriority = iVersionUpdatePriority.iVersionUpdatePriorityDefault
+        useAllAvailableLanguages = true
+        onlyPromptIfMainWindowIsAvailable = true
+        checkAtLaunch = true
+        checkPeriod = 0.0
+        remindPeriod = 1.0
         
-        #if os(iOS)
-        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground), name: Notification.Name.UIApplicationWillEnterForeground, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(didRotate), name: Notification.Name.UIDeviceOrientationDidChange, object: nil)
-        #endif
+        useUIAlertControllerIfAvailable = true
+        useAppStoreDetailsIfNoPlistEntryFound = true
+        previewMode = false
+        checkingForNewVersion = false
+        
+        applicationBundleID = "com.charcoaldesign.rainbowblocks-free"
+        
+        //configure iVersion. These paths are optional - if you don't set
+        //them, iVersion will just get the release notes from iTunes directly (if your app is on the store)
+        remoteVersionsPlistURL = "http://charcoaldesign.co.uk/iVersion/versions.plist"
+        localVersionsPlistPath = "versions.plist"
         
         //get country
         self.appStoreCountry = Locale.current.currencyCode
@@ -388,24 +462,24 @@ class iVersion : NSObject {
         
         //application version (use short version preferentially)
         self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
-        if (self.applicationVersion.isEmpty) {
+        /*
+        if (self.applicationVersion?.isEmpty) {
             self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as! String
         }
-        
+        */
         //bundle id
         self.applicationBundleID = Bundle.main.bundleIdentifier!
         
-        //default settings
-        self.updatePriority = iVersionUpdatePriority.iVersionUpdatePriorityDefault
-        self.useAllAvailableLanguages = true
-        self.onlyPromptIfMainWindowIsAvailable = true
-        self.checkAtLaunch = true
-        self.checkPeriod = 0.0
-        self.remindPeriod = 1.0
         
         //enable verbose logging in debug mode
         self.verboseLogging = true
         
+        
+        super.init()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground), name: Notification.Name.UIApplicationWillEnterForeground, object: nil)
+        
+
         //app launched
         self.performSelector(onMainThread: #selector(applicationLaunched), with: nil, waitUntilDone: false)
         
@@ -441,7 +515,7 @@ class iVersion : NSObject {
 
 
 // NSString extensions at line 83 - 93 in iVersion.m
-
+/*
 extension String {
     @objc func compareVersion(version: String) -> ComparisonResult {
         //TODO: return self.compare(version: version, options: NSNumbericSearch)
@@ -453,7 +527,7 @@ extension String {
         return ComparisonResult.orderedSame
     }
 }
-
+*/
 // TODO: is conforming to protocol <NSObject> necessary?
 // Need to add @objc optional?
 protocol iVersionDelegate : NSObjectProtocol {
