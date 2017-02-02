@@ -17,6 +17,7 @@
 		00F07D2C1E3A8E3800BCBDE7 /* iVersion.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 00F07D2B1E3A8E3800BCBDE7 /* iVersion.bundle */; };
 		00F07D2E1E3A8E7C00BCBDE7 /* iVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F07D2D1E3A8E7C00BCBDE7 /* iVersion.swift */; };
 		00F07D301E3A921B00BCBDE7 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F07D2F1E3A921B00BCBDE7 /* Constants.swift */; };
+		00FC17341E43D6B30001CB16 /* versions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 00FC17331E43D6B30001CB16 /* versions.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +54,7 @@
 		00F07D2B1E3A8E3800BCBDE7 /* iVersion.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = iVersion.bundle; sourceTree = "<group>"; };
 		00F07D2D1E3A8E7C00BCBDE7 /* iVersion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = iVersion.swift; sourceTree = "<group>"; };
 		00F07D2F1E3A921B00BCBDE7 /* Constants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		00FC17331E43D6B30001CB16 /* versions.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = versions.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +90,7 @@
 				00BFFA721E3A6F2D00BA1AF3 /* iVersionTests */,
 				00BFFA7D1E3A6F2D00BA1AF3 /* iVersionUITests */,
 				00BFFA5C1E3A6F2C00BA1AF3 /* Products */,
+				00FC17351E43D6BD0001CB16 /* Resources */,
 			);
 			sourceTree = "<group>";
 		};
@@ -140,6 +143,14 @@
 				00F07D2F1E3A921B00BCBDE7 /* Constants.swift */,
 			);
 			name = Classes;
+			sourceTree = "<group>";
+		};
+		00FC17351E43D6BD0001CB16 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				00FC17331E43D6B30001CB16 /* versions.plist */,
+			);
+			name = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -251,6 +262,7 @@
 			files = (
 				00BFFA691E3A6F2C00BA1AF3 /* LaunchScreen.storyboard in Resources */,
 				00BFFA661E3A6F2C00BA1AF3 /* Assets.xcassets in Resources */,
+				00FC17341E43D6B30001CB16 /* versions.plist in Resources */,
 				00F07D2C1E3A8E3800BCBDE7 /* iVersion.bundle in Resources */,
 				00BFFA641E3A6F2C00BA1AF3 /* Main.storyboard in Resources */,
 			);

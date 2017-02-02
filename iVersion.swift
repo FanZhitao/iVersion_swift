@@ -63,38 +63,14 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     var remindPeriod: Float
     
     //message text - you may wish to customise these
-    lazy var inThisVersionTitle = self.localizedString(key: iVersionInThisVersionTitleKey, defaultString: "New in this version")
+    lazy var inThisVersionTitle : String? = self.localizedString(key: iVersionInThisVersionTitleKey, defaultString: "New in this version")
+    lazy var updateAvailableTitle: String? = self.localizedString(key: iVersionUpdateAvailableTitleKey, defaultString: "New version available")
+    lazy var versionLabelFormat: String? = self.localizedString(key: iVersionVersionLabelFormatKey, defaultString: "Version %@")
 
-    var updateAvailableTitle: String? {
-        get {
-            return self.localizedString(key: iVersionUpdateAvailableTitleKey, withDefault: "New version available")
-        }
-    }
-    var versionLabelFormat: String? {
-        get {
-            return self.localizedString(forKey: iVersionVersionLabelFormatKey, withDefault: "Version %@")
-        }
-    }
-    var okButtonLabel: String? {
-        get {
-            return self.localizedString(forKey: iVersionOKButtonKey, withDefault: "New version available")
-        }
-    }
-    var ignoreButtonLabel: String? {
-        get {
-            return self.localizedString(forKey: iVersionIgnoreVersionKey, withDefault: "Ignore")
-        }
-    }
-    var remindButtonLabel: String? {
-        get {
-            return self.localizedString(forKey: iVersionRemindButtonKey, withDefault: "Remind Me Later")
-        }
-    }
-    var downloadButtonLabel: String? {
-        get {
-            return self.localizedString(forKey: iVersionDownloadButtonKey, withDefault: "Download")
-        }
-    }
+    lazy var okButtonLabel: String? = self.localizedString(key: iVersionOKButtonKey, defaultString: "New version available")
+    lazy var ignoreButtonLabel: String? = self.localizedString(key: iVersionIgnoreVersionKey, defaultString: "Ignore")
+    lazy var remindButtonLabel: String? = self.localizedString(key: iVersionRemindButtonKey, defaultString: "Remind Me Later")
+    lazy var downloadButtonLabel: String? = self.localizedString(key: iVersionDownloadButtonKey, defaultString: "Download")
     
     //debugging and prompt overrides
     var updatePriority: iVersionUpdatePriority
@@ -162,20 +138,19 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     
     private var showIgnoreButton : Bool {
         get {
-            // TODO
-            return true
+            return !((ignoreButtonLabel?.isEmpty)!) && updatePriority.rawValue < iVersionUpdatePriority.iVersionUpdatePriorityMedium.rawValue
         }
     }
     
     private var showRemindButton : Bool {
         get {
-            return true
+            return !((remindButtonLabel?.isEmpty)!) && updatePriority.rawValue < iVersionUpdatePriority.iVersionUpdatePriorityHigh.rawValue
         }
     }
     
     //manually control behaviour
     func openAppPageInAppStore() -> Bool {
-        if self.updateURL == nil && self.appStoreID == nil {
+        if updateURL == nil && appStoreID == nil {
             print("iVersion was unable to open the App Store because the app store ID is not set.")
             return false
         }
@@ -196,9 +171,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                 rootViewController = rootViewController!.presentedViewController
             }
             rootViewController!.present(productController, animated: true, completion: nil)
-            //if delegate.respondsToSele {
-            //    delegate?.iVersionDidPresentStoreKitModal()
-            //}
+            delegate?.iVersionDidPresentStoreKitModal?()
         }
         return true
     }
@@ -208,9 +181,10 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             if (true) { // TODO: String compare
                 lastReminded = nil
                 var showDetails = versionDetails != nil
-                if showDetails && false { // TODO: iVersionShouldDisplayCurrentVersionDetails selector
-                    //showDetails = delegate?.iVersionShouldDisplayCurrentVersionDetails(versionDetails: versionDetails)
-                }
+                // TODO: responds to selector
+                //if showDetails && delegate?.responds(to: #selector(iVersionShouldDisplayCurrentVersionDetails(versionDetails:))) {
+                //    showDetails = (delegate?.iVersionShouldDisplayCurrentVersionDetails?(versionDetails: versionDetails))!
+                //}
                 if showDetails && visibleLocalAlert == nil && visibleRemoteAlert == nil {
                     visibleLocalAlert = showAlertWith(title: inThisVersionTitle, details: versionDetails, defaultButton: okButtonLabel, ignoreButton: nil, remindButton: nil)
                 }
@@ -228,13 +202,13 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             self.didDismissAlert(alertView: alert, buttonIndex: 0)
         }
         alert.addAction(downloadAction)
-        if self.showIgnoreButton {
+        if showIgnoreButton {
             let ignoreAction = UIAlertAction(title: ignoreButtonLabel, style: UIAlertActionStyle.default, handler: { UIAlertAction in
                 self.didDismissAlert(alertView: alert, buttonIndex: 1)
             })
             alert.addAction(ignoreAction)
         }
-        if self.showRemindButton {
+        if showRemindButton {
             let remindAction = UIAlertAction(title: remindButtonLabel, style: UIAlertActionStyle.default, handler: { UIAlertAction in
                 self.didDismissAlert(alertView: alert, buttonIndex: self.showIgnoreButton ? 2 : 1)
             })
@@ -259,8 +233,17 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         
         if buttonIndex == downloadButtonIndex {
             lastReminded = nil
-            // TODO: delegate methods
-            openAppPageInAppStore()
+            delegate?.iVersionUserDidAttemptToDownloadUpdate?(version: latestVersion)
+            if let _ = delegate?.iVersionShouldOpenAppStore?() {
+                _ = openAppPageInAppStore()
+            }
+        } else if buttonIndex == ignoreButtonIndex {
+            ignoredVersion = latestVersion
+            lastReminded = nil
+            delegate?.iVersionUserDidIgnoreUpdate?(version: latestVersion)
+        } else if buttonIndex == remindButtonIndex {
+            lastReminded = Date()
+            delegate?.iVersionUserDidRequestReminderForUpdate?(version: latestVersion)
         }
     }
     
@@ -280,42 +263,48 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         // TODO
     }
     
-    private func mostRecentVersionInDict(dict: NSDictionary?) -> String {
+    private func mostRecentVersionInDict(dict: NSDictionary?) -> String? {
+        // TODO
         return "TODO"
-        //(dict.allKeys as NSArray).sortedArray(using: #selector(compareVersion)).last!
+        // return (dict?.allKeys as NSArray).sortedArray(using: #selector(String.compareVersion)).last!
     }
     
-    private func versionDetailsInDict(version: String, dict: NSDictionary) -> String {
-        let versionData = dict[version]
+    private func versionDetailsInDict(version: String?, dict: NSDictionary?) -> String? {
+        let versionData = dict?[version]
         if versionData is String {
             return versionData! as! String
         } else if versionData is [Any] {
             return (versionData as! NSArray).componentsJoined(by: "\n")
         }
-        return "TODO"
+        return nil
     }
     
-    private func versionDetailsSince(lastVersion: String, dict: NSDictionary) -> String? {
-        var lastVersion = lastVersion
-        if self.previewMode {
-            lastVersion = "0"
-        }
+    private func versionDetailsSince(lastVersion: String?, dict: NSDictionary?) -> String? {
         var newVersionFound = false
         var details = String()
-        //var versions: [Any] = (dict.keys as NSArray).sortedArray(using: #selector(self.compareVersionDescending))
-        let versions = dict.allKeys
-        for version in versions {
-            let v = version as! String
-            if v.compare(lastVersion) == .orderedDescending {
-                newVersionFound = true
-                if groupNotesByVersion {
-                    details += (versionLabelFormat?.replacingOccurrences(of: "%@", with: v))!
-                    details += "\n\n"
-                }
-                details += versionDetailsInDict(version: v, dict: dict)
-                details += "\n"
-                if groupNotesByVersion {
-                    details += "\n"
+        if var lastVersion = lastVersion {
+            if previewMode {
+                lastVersion = "0"
+            }
+            // TODO
+            //var versions: [Any] = (dict.keys as NSArray).sortedArray(using: #selector(self.compareVersionDescending))
+            if let versions = dict?.allKeys {
+                for version in versions {
+                    let v = version as! String
+                    if v.compare(lastVersion) == .orderedDescending {
+                        newVersionFound = true
+                        if groupNotesByVersion {
+                            details += (versionLabelFormat?.replacingOccurrences(of: "%@", with: v))!
+                            details += "\n\n"
+                        }
+                        if let d = versionDetailsInDict(version: v, dict: dict) {
+                            details += d
+                        }
+                        details += "\n"
+                        if groupNotesByVersion {
+                            details += "\n"
+                        }
+                    }
                 }
             }
         }
@@ -326,18 +315,13 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     // private properties
     private var remoteVersionsDict: NSDictionary?
     private var downloadError: Error?
-    private var versionDetails: String? {
-        get {
-            /*
-            if (self.viewedVersionDetails) {
-                return self.versionDetailsInDict(version: self.applicationVersion, dict: self.localVersionsDict())
-            } else {
-                return self.versionDetails(since: self.lastVersion, inDict: self.localVersionsDict())
-            }
- */
-            return "TODO"
+    private lazy var versionDetails: String? = {
+        if self.viewedVersionDetails != nil {
+            return self.versionDetailsInDict(version: self.applicationVersion, dict:self.localVersionsDict())
+        } else {
+            return self.versionDetailsSince(lastVersion: self.lastVersion, dict: self.localVersionsDict())
         }
-    }
+    }()
     private var visibleLocalAlert: AnyObject?
     private var visibleRemoteAlert: AnyObject?
     private var checkingForNewVersion: Bool // TODO: how to deal with assign property
@@ -357,77 +341,50 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     }
     
     private func downloadedVersionsData() {
-// MARK: - TODO
-        /*
-        if self.checkingForNewVersion {
+        if checkingForNewVersion {
             //no longer checking
-            self.checkingForNewVersion = false
+            checkingForNewVersion = false
             //check if data downloaded
-            if !self.remoteVersionsDict {
+            if remoteVersionsDict == nil {
                 //log the error
-                if self.downloadError {
-                    print("iVersion update check failed because: \(self.downloadError.localizedDescription)")
-                }
-                else {
+                if downloadError != nil {
+                    print("iVersion update check failed because: \(downloadError!.localizedDescription)")
+                } else {
                     print("iVersion update check failed because an unknown error occured")
                 }
-                if self.delegate.responds(to: #selector(self.iVersionVersionCheckDidFailWithError)) {
-                    self.delegate.iVersionVersionCheckDidFailWithError(self.downloadError)
-                }
-                else if self.delegate.responds(to: #selector(self.iVersionVersionCheckFailed)) {
-                    print("iVersionVersionCheckFailed: delegate method is deprecated, use iVersionVersionCheckDidFailWithError: instead")
-                    self.delegate.perform(#selector(self.iVersionVersionCheckFailed), with: self.downloadError)
-                }
+                delegate?.iVersionVersionCheckDidFailWithError?(error: downloadError)
                 
                 return
             }
             //get version details
-            var details: String = self.versionDetails(since: self.applicationVersion, in: self.remoteVersionsDict)
-            var mostRecentVersion: String = self.mostRecentVersion(in: self.remoteVersionsDict)
-            if details != "" {
+            let mostRecentVersion = mostRecentVersionInDict(dict: remoteVersionsDict)
+            if let details = versionDetailsInDict(version: applicationVersion, dict: remoteVersionsDict) {
                 //inform delegate of new version
-                if self.delegate.responds(to: Selector("iVersionDidDetectNewVersion:details:")) {
-                    self.delegate.iVersionDidDetectNewVersion(mostRecentVersion, details: details)
+                delegate?.iVersionDidDetectNewVersion?(version: mostRecentVersion, versionDetails: details)
+
+                //check if ignored
+                var showDetails = !(ignoredVersion == mostRecentVersion) || previewMode
+                if showDetails {
+                    showDetails = (delegate?.iVersionShouldDisplayNewVersion?(version: mostRecentVersion, versionDetails: details))!
+                    if !showDetails && verboseLogging {
+                        print("iVersion did not display the new version because the iVersionShouldDisplayNewVersion:details: delegate method returned NO")
+                    }
+                } else if verboseLogging {
+                    print("iVersion did not display the new version because it was marked as ignored")
                 }
-                var mostRecentVersion: String = self.mostRecentVersion(in: self.remoteVersionsDict)
-                if details {
-                    //inform delegate of new version
-                    if self.delegate.responds(to: Selector("iVersionDidDetectNewVersion:details:")) {
-                        self.delegate.iVersionDidDetectNewVersion(mostRecentVersion, details: details)
+                
+                //show details
+                if showDetails && visibleRemoteAlert != nil {
+                    var title = updateAvailableTitle
+                    if !groupNotesByVersion {
+                        title = title?.appendingFormat(" (%@)", mostRecentVersion!)
                     }
-                    else if self.delegate.responds(to: Selector("iVersionDetectedNewVersion:details:")) {
-                        print("iVersionDetectedNewVersion:details: delegate method is deprecated, use iVersionDidDetectNewVersion:details: instead")
-                        self.delegate.perform(Selector("iVersionDetectedNewVersion:details:"), withObject: mostRecentVersion, withObject: details)
-                    }
-                    
-                    //check if ignored
-                    var showDetails: Bool = !(self.ignoredVersion == mostRecentVersion) || self.previewMode
-                    if showDetails {
-                        if self.delegate.responds(to: Selector("iVersionShouldDisplayNewVersion:details:")) {
-                            showDetails = self.delegate.iVersionShouldDisplayNewVersion(mostRecentVersion, details: details)
-                            if !showDetails && self.verboseLogging {
-                                print("iVersion did not display the new version because the iVersionShouldDisplayNewVersion:details: delegate method returned NO")
-                            }
-                        }
-                    }
-                    else if self.verboseLogging {
-                        print("iVersion did not display the new version because it was marked as ignored")
-                    }
-                    
-                    //show details
-                    if showDetails && !self.visibleRemoteAlert {
-                        var title: String = self.updateAvailableTitle
-                        if !self.groupNotesByVersion {
-                            title = title.appendingFormat(" (%@)", mostRecentVersion)
-                        }
-                        self.visibleRemoteAlert = self.showAlert(withTitle: title, details: details, defaultButton: self.downloadButtonLabel, ignoreButton: self.showIgnoreButton() ? self.ignoreButtonLabel : nil, remindButton: self.showRemindButton() ? self.remindButtonLabel : nil)
-                    } else if self.delegate.responds(to: #selector(self.iVersionDidNotDetectNewVersion)) {
-                        self.delegate.iVersionDidNotDetectNewVersion()
-                    }
+                    visibleRemoteAlert = showAlertWith(title: title, details: details, defaultButton: downloadButtonLabel, ignoreButton: showIgnoreButton ? ignoreButtonLabel : nil, remindButton: showRemindButton ? remindButtonLabel : nil)
+                } else {
+                    delegate?.iVersionDidNotDetectNewVersion?()
                 }
             }
         }
- */
     }
     
     private func localVersionsDict() -> NSDictionary {
@@ -437,19 +394,19 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             static var versionsDict: NSDictionary?
         }
         if Holder.versionsDict == nil {
-            if self.localVersionsPlistPath == nil {
+            if localVersionsPlistPath == nil {
                 Holder.versionsDict = NSDictionary() //empty dictionary
             } else {
-                var versionsFile: String = URL(fileURLWithPath: (Bundle.main.resourcePath)!).appendingPathComponent(self.localVersionsPlistPath!).absoluteString
+                var versionsFile = URL(fileURLWithPath: (Bundle.main.resourcePath)!).appendingPathComponent(self.localVersionsPlistPath!).absoluteString
                 Holder.versionsDict = NSDictionary.init(contentsOfFile: versionsFile)
                 if Holder.versionsDict == nil {
                     // Get the path to versions plist in localized directory
-// TODO
-                    /*
-                    var pathComponents: [Any] = self.localVersionsPlistPath.components(separatedBy: ".")
-                    versionsFile = (pathComponents.count == 2) ? Bundle.main.path(forResource: pathComponents[0], ofType: pathComponents[1]) : nil
-                    Holder.versionsDict = [AnyHashable: Any](contentsOfFile: versionsFile)
- */
+                    if let pathComponents = localVersionsPlistPath?.components(separatedBy: ".") {
+                        if let s = Bundle.main.path(forResource: pathComponents[0], ofType: pathComponents[1]) {
+                            versionsFile = pathComponents.count == 2 ? s : ""
+                        }
+                    }
+                    Holder.versionsDict = NSDictionary.init(contentsOfFile: versionsFile)
                 }
             }
         }
@@ -489,7 +446,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         }
         
         //application version (use short version preferentially)
-        self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+        self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         /*
         if (self.applicationVersion?.isEmpty) {
             self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as! String
@@ -514,10 +471,10 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     }
     
     @objc func applicationLaunched() {
-        if self.checkAtLaunch {
-            self.checkIfNewVersion()
-            if self.shouldCheckForNewVersion() {
-                self.checkForNewVersion()
+        if checkAtLaunch {
+            checkIfNewVersion()
+            if shouldCheckForNewVersion() {
+                checkForNewVersion()
             }
         } else if self.verboseLogging {
             print("iVersion will not check for updates because the checkAtLaunch option is disabled")
@@ -526,11 +483,11 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     
     @objc func applicationWillEnterForeground() {
         if UIApplication.shared.applicationState == UIApplicationState.background {
-            if self.checkAtLaunch {
-                if self.shouldCheckForNewVersion() {
-                    self.checkForNewVersion()
+            if checkAtLaunch {
+                if shouldCheckForNewVersion() {
+                    checkForNewVersion()
                 }
-            } else if (self.verboseLogging) {
+            } else if (verboseLogging) {
                 print("iVersion will not check for updates because the checkAtLaunch option is disabled")
             }
         }
@@ -546,29 +503,34 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
 
 extension String {
     func compareVersion(version: String) -> ComparisonResult {
-        //TODO: return self.compare(version: version, options: NSNumbericSearch)
-        return ComparisonResult.orderedSame
+        return self.compare(version, options: String.CompareOptions.numeric, range: range(of: version), locale: Locale.autoupdatingCurrent)
     }
     
     func compareVerisonDescending(version: String) -> ComparisonResult {
-        //TODO
-        return ComparisonResult.orderedSame
+        let r = compareVersion(version: version)
+        if r == ComparisonResult.orderedAscending {
+            return ComparisonResult.orderedDescending
+        } else if r == ComparisonResult.orderedDescending {
+            return ComparisonResult.orderedAscending
+        } else {
+            return r
+        }
     }
 }
 
 // Need to add @objc optional?
-protocol iVersionDelegate : class {
-    func iVersionShouldCheckForNewVersion() -> Bool
-    func iVersionDidNotDetectNewVersion()
-    func iVersionVersionCheckDidFailWithError(error: Error)
-    func iVersionDidDetectNewVersion(version: String, versionDetails: String)
-    func iVersionShouldDisplayNewVersion(version: String, versionDetails: String) -> Bool
-    func iVersionShouldDisplayCurrentVersionDetails(versionDetails: String) -> Bool
-    func iVersionUserDidAttemptToDownloadUpdate(version: String)
-    func iVersionUserDidRequestReminderForUpdate(version: String)
-    func iVersionUserDidIgnoreUpdate(version: String)
-    func iVersionShouldOpenAppStore() -> Bool
-    func iVersionDidPresentStoreKitModal()
-    func iVersionDidDismissStoreKitModal()
+@objc protocol iVersionDelegate : class, NSObjectProtocol {
+    @objc optional func iVersionShouldCheckForNewVersion() -> Bool
+    @objc optional func iVersionDidNotDetectNewVersion()
+    @objc optional func iVersionVersionCheckDidFailWithError(error: Error?)
+    @objc optional func iVersionDidDetectNewVersion(version: String?, versionDetails: String?)
+    @objc optional func iVersionShouldDisplayNewVersion(version: String?, versionDetails: String?) -> Bool
+    @objc optional func iVersionShouldDisplayCurrentVersionDetails(versionDetails: String?) -> Bool
+    @objc optional func iVersionUserDidAttemptToDownloadUpdate(version: String?)
+    @objc optional func iVersionUserDidRequestReminderForUpdate(version: String?)
+    @objc optional func iVersionUserDidIgnoreUpdate(version: String?)
+    @objc optional func iVersionShouldOpenAppStore() -> Bool
+    @objc optional func iVersionDidPresentStoreKitModal()
+    @objc optional func iVersionDidDismissStoreKitModal()
 }
 
