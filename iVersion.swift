@@ -59,8 +59,8 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     //usage settings - these have sensible defaults
     var showOnFirstLaunch: Bool
     var groupNotesByVersion: Bool
-    var checkPeriod: Float
-    var remindPeriod: Float
+    var checkPeriod: Double
+    var remindPeriod: Double
     
     //message text - you may wish to customise these
     lazy var inThisVersionTitle : String? = self.localizedString(key: iVersionInThisVersionTitleKey, defaultString: "New in this version")
@@ -248,8 +248,33 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     }
     
     func shouldCheckForNewVersion() -> Bool {
-        // TODO
-        return false
+        if previewMode == false {
+            if lastReminded != nil {
+                if lastReminded!.timeIntervalSinceNow < remindPeriod * SECONDS_IN_A_DAY {
+                    if verboseLogging {
+                        print("iVersion did not check for a new version because the user last asked to be reminded less than \(remindPeriod) days ago")
+                    }
+                    return false;
+                }
+            }
+        } else if lastChecked != nil && lastChecked!.timeIntervalSinceNow < checkPeriod * SECONDS_IN_A_DAY {
+            if verboseLogging {
+                print("iVersion did not check for a new version because the last check was less than \(checkPeriod) days ago")
+            }
+            return false
+        } else if verboseLogging {
+            print("iVersion debug mode is enabled - make sure you disable this for release")
+        }
+        
+        let shouldCheck = delegate?.iVersionShouldCheckForNewVersion?()
+        if shouldCheck != nil {
+            if verboseLogging {
+                print("iVersion did not check for a new version because the iVersionShouldCheckForNewVersion delegate method returned NO")
+            }
+            return shouldCheck!
+        }
+        
+        return true
     }
     
     func checkForNewVersion() {
@@ -264,9 +289,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     }
     
     private func mostRecentVersionInDict(dict: NSDictionary?) -> String? {
-        // TODO
-        return "TODO"
-        // return (dict?.allKeys as NSArray).sortedArray(using: #selector(String.compareVersion)).last!
+        return dict?.keysSortedByValue(comparator: <#T##(Any, Any) -> ComparisonResult#>)
     }
     
     private func versionDetailsInDict(version: String?, dict: NSDictionary?) -> String? {
@@ -492,10 +515,6 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             }
         }
     }
-    
-    @objc func didRotate() {
-        
-    }
 }
 
 
@@ -518,7 +537,6 @@ extension String {
     }
 }
 
-// Need to add @objc optional?
 @objc protocol iVersionDelegate : class, NSObjectProtocol {
     @objc optional func iVersionShouldCheckForNewVersion() -> Bool
     @objc optional func iVersionDidNotDetectNewVersion()
