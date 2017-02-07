@@ -27,10 +27,10 @@ let iVersionLastCheckedKey = "iVersionLastChecked"
 let iVersionLastRemindedKey = "iVersionLastReminded"
 
 let iVersionMacAppStoreBundleID = "com.apple.appstore"
-let iVersionAppLookupURLFormat = "https://itunes.apple.com/%/lookup"
+let iVersionAppLookupURLFormat = "https://itunes.apple.com/%@/lookup"
 
-let iVersioniOSAppStoreURLFormat = "itms-apps://itunes.apple.com/app/id%"
-let iVersionMacAppStoreURLFormat = "macappstore://itunes.apple.com/app/id%"
+let iVersioniOSAppStoreURLFormat = "itms-apps://itunes.apple.com/app/id%@"
+let iVersionMacAppStoreURLFormat = "macappstore://itunes.apple.com/app/id%@"
 
 
 let SECONDS_IN_A_DAY = 86400.0
@@ -39,14 +39,14 @@ let REQUEST_TIMEOUT = 60.0
 
 
 enum iVersionErrorCode: Int {
-    case iVersionErrorBundleIdDoesNotMatchAppStore = 1,
-    iVersionErrorApplicationNotFoundOnAppStore,
-    iVersionErrorOSVersionNotSupported
+    case bundleIdDoesNotMatchAppStore = 1,
+    applicationNotFoundOnAppStore,
+    OSVersionNotSupported
 }
 
 enum iVersionUpdatePriority: Int {
-    case iVersionUpdatePriorityDefault = 0,
-    iVersionUpdatePriorityLow = 1,
-    iVersionUpdatePriorityMedium = 2,
-    iVersionUpdatePriorityHigh = 3
+    case defaultPriority = 0,
+    low = 1,
+    medium = 2,
+    high = 3
 }
