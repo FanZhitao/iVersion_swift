@@ -177,14 +177,15 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     }
     
     func checkIfNewVersion() {
-        if lastVersion == nil || showOnFirstLaunch || previewMode {
-            if (true) { // TODO: String compare
+        if lastVersion != nil || showOnFirstLaunch || previewMode {
+            if let _ = applicationVersion?.compare(lastVersion!, options: .numeric) {
                 lastReminded = nil
                 var showDetails = versionDetails != nil
-                // TODO: responds to selector
-                //if showDetails && delegate?.responds(to: #selector(iVersionShouldDisplayCurrentVersionDetails(versionDetails:))) {
-                //    showDetails = (delegate?.iVersionShouldDisplayCurrentVersionDetails?(versionDetails: versionDetails))!
-                //}
+                if showDetails {
+                    if let s = delegate?.iVersionShouldDisplayCurrentVersionDetails?(versionDetails: versionDetails) {
+                        showDetails = s
+                    }
+                }
                 if showDetails && visibleLocalAlert == nil && visibleRemoteAlert == nil {
                     visibleLocalAlert = showAlertWith(title: inThisVersionTitle, details: versionDetails, defaultButton: okButtonLabel, ignoreButton: nil, remindButton: nil)
                 }
@@ -266,12 +267,11 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             print("iVersion debug mode is enabled - make sure you disable this for release")
         }
         
-        let shouldCheck = delegate?.iVersionShouldCheckForNewVersion?()
-        if shouldCheck != nil {
+        if let shouldCheck = delegate?.iVersionShouldCheckForNewVersion?() {
             if verboseLogging {
                 print("iVersion did not check for a new version because the iVersionShouldCheckForNewVersion delegate method returned NO")
             }
-            return shouldCheck!
+            return shouldCheck
         }
         
         return true
@@ -288,39 +288,39 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         // TODO
     }
     
-    private func mostRecentVersionInDict(dict: NSDictionary?) -> String? {
-        return dict?.keysSortedByValue(comparator: <#T##(Any, Any) -> ComparisonResult#>)
+    private func mostRecentVersionInDict(dict: [String: AnyObject]?) -> String? {
+         return dict?.keys.sorted(by: {(s0, s1) -> Bool in return s0.localizedStandardCompare(s1) == .orderedAscending}).last
     }
     
-    private func versionDetailsInDict(version: String?, dict: NSDictionary?) -> String? {
-        let versionData = dict?[version]
-        if versionData is String {
-            return versionData! as! String
-        } else if versionData is [Any] {
-            return (versionData as! NSArray).componentsJoined(by: "\n")
+    private func versionDetailsInDict(version: String?, dict: [String: AnyObject]?) -> String? {
+        if version != nil {
+            let versionData = dict?[version!]
+            if versionData is String {
+                return (versionData as! String)
+            } else if versionData is [String] {
+                return (versionData as! [String]).joined(separator: "\n")
+            }
         }
         return nil
     }
     
-    private func versionDetailsSince(lastVersion: String?, dict: NSDictionary?) -> String? {
+    private func versionDetailsSince(lastVersion: String?, dict: [String: AnyObject]?) -> String? {
         var newVersionFound = false
         var details = String()
         if var lastVersion = lastVersion {
             if previewMode {
                 lastVersion = "0"
             }
-            // TODO
-            //var versions: [Any] = (dict.keys as NSArray).sortedArray(using: #selector(self.compareVersionDescending))
-            if let versions = dict?.allKeys {
+
+            if let versions = dict?.keys.sorted(by: {(s0, s1) -> Bool in return s0.localizedStandardCompare(s1) == .orderedAscending}) {
                 for version in versions {
-                    let v = version as! String
-                    if v.compare(lastVersion) == .orderedDescending {
+                    if version.compare(lastVersion) == .orderedDescending {
                         newVersionFound = true
                         if groupNotesByVersion {
-                            details += (versionLabelFormat?.replacingOccurrences(of: "%@", with: v))!
+                            details += (versionLabelFormat?.replacingOccurrences(of: "%@", with: version))!
                             details += "\n\n"
                         }
-                        if let d = versionDetailsInDict(version: v, dict: dict) {
+                        if let d = versionDetailsInDict(version: version, dict: dict) {
                             details += d
                         }
                         details += "\n"
@@ -334,9 +334,8 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         return newVersionFound ? details.trimmingCharacters(in: CharacterSet.newlines) : nil
     }
     
-    
     // private properties
-    private var remoteVersionsDict: NSDictionary?
+    private var remoteVersionsDict: [String: AnyObject]?
     private var downloadError: Error?
     private lazy var versionDetails: String? = {
         if self.viewedVersionDetails != nil {
@@ -347,21 +346,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     }()
     private var visibleLocalAlert: AnyObject?
     private var visibleRemoteAlert: AnyObject?
-    private var checkingForNewVersion: Bool // TODO: how to deal with assign property
-    
-    
-    private func urlEncodedString(_ string: String) -> String {
-        return "TODO"
-        /*
-        var stringRef: CFString = CFBridgingRetain(string) as! CFString
-        //clang diagnostic push
-        //clang diagnostic ignored "-Wdeprecated-declarations"
-        var encoded: CFString = CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault, stringRef, nil, CFSTR("!*'\"();:@&=+$,/?%#[]% "), kCFStringEncodingUTF8)
-        //clang diagnostic pop
-        
-        return CFBridgingRelease(encoded)
- */
-    }
+    private var checkingForNewVersion: Bool
     
     private func downloadedVersionsData() {
         if checkingForNewVersion {
@@ -410,18 +395,18 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         }
     }
     
-    private func localVersionsDict() -> NSDictionary {
+    private func localVersionsDict() -> [String: AnyObject]? {
         // static var workaround
         // ref: http://stackoverflow.com/questions/25354882/static-function-variables-in-swift
         struct Holder {
-            static var versionsDict: NSDictionary?
+            static var versionsDict: [String: AnyObject]?
         }
         if Holder.versionsDict == nil {
             if localVersionsPlistPath == nil {
-                Holder.versionsDict = NSDictionary() //empty dictionary
+                Holder.versionsDict = Dictionary()
             } else {
                 var versionsFile = URL(fileURLWithPath: (Bundle.main.resourcePath)!).appendingPathComponent(self.localVersionsPlistPath!).absoluteString
-                Holder.versionsDict = NSDictionary.init(contentsOfFile: versionsFile)
+                Holder.versionsDict = NSDictionary(contentsOfFile: versionsFile) as? [String: AnyObject]
                 if Holder.versionsDict == nil {
                     // Get the path to versions plist in localized directory
                     if let pathComponents = localVersionsPlistPath?.components(separatedBy: ".") {
@@ -429,11 +414,11 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                             versionsFile = pathComponents.count == 2 ? s : ""
                         }
                     }
-                    Holder.versionsDict = NSDictionary.init(contentsOfFile: versionsFile)
+                    Holder.versionsDict = NSDictionary(contentsOfFile: versionsFile) as? [String: AnyObject]
                 }
             }
         }
-        return Holder.versionsDict!
+        return Holder.versionsDict
     }
     
     override init() {
@@ -522,7 +507,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
 
 extension String {
     func compareVersion(version: String) -> ComparisonResult {
-        return self.compare(version, options: String.CompareOptions.numeric, range: range(of: version), locale: Locale.autoupdatingCurrent)
+        return self.compare(version, options: .numeric, range: range(of: version), locale: Locale.autoupdatingCurrent)
     }
     
     func compareVerisonDescending(version: String) -> ComparisonResult {
