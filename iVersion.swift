@@ -291,9 +291,9 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     func checkForNewVersionInBackground() {
         objc_sync_enter(self)
         var newerVersionAvaiable = false
-        var osVersionSupported = false
+        //let osVersionSupported = false
         var latestVersion : String?
-        var versions : [String: AnyObject]
+        var versions = [String: AnyObject]()
         
         var iTunesServiceURL = String(format: iVersionAppLookupURLFormat, appStoreCountry!)
         if let a = appStoreID {
@@ -306,8 +306,8 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             print(String(format: "iVersion is checking %@ for a new app version...", iTunesServiceURL))
         }
         
-        var url = URL(string: iTunesServiceURL)
-        var request = URLRequest(url: url!, cachePolicy: URLRequest.CachePolicy.reloadIgnoringLocalCacheData, timeoutInterval: REQUEST_TIMEOUT)
+        let url = URL(string: iTunesServiceURL)
+        //let request = URLRequest(url: url!, cachePolicy: URLRequest.CachePolicy.reloadIgnoringLocalCacheData, timeoutInterval: REQUEST_TIMEOUT)
         
         URLSession.shared.dataTask(with: url!) { (data, response, error) in
             var statusCode = 0
@@ -362,9 +362,26 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                             print("iVersion will check \(self.remoteVersionsPlistURL) for \(self.appStoreID != nil ? "release notes" : "a new app version")")
                         }
                         let url = URL(string: self.remoteVersionsPlistURL)
-                        URLSession.shared.dataTask(with: url, completionHandler: { (data0, response0, error0) in
+                        URLSession.shared.dataTask(with: url!, completionHandler: { (data0, response0, error0) in
                             if data0 != nil {
-                                let plistVersions = PropertyListSerialization.data(fromPropertyList: data0, format: PropertyListSerialization.PropertyListFormat., options: <#T##PropertyListSerialization.WriteOptions#>)
+                                do {
+                                    var plistVersions = try PropertyListSerialization.propertyList(from: data0!, options: [], format: nil) as? [String: AnyObject]
+                                    
+                                    if latestVersion != nil {
+                                        var versions = [String: AnyObject]()
+                                        for version in plistVersions!.keys {
+                                            if version.compare(latestVersion!, options: .numeric) != .orderedDescending {
+                                                versions[version] = plistVersions![version]
+                                            }
+                                        }
+                                        plistVersions = versions
+                                    }
+                                    if latestVersion == nil || plistVersions != nil || !self.useAppStoreDetailsIfNoPlistEntryFound {
+                                        versions = plistVersions! // copy?
+                                    }
+                                } catch {
+                                    print("plist deserailization error.")
+                                }
                             }
                         })
                     }
@@ -387,10 +404,63 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     
     private func value(forKey key: String, inJSON json: AnyObject) -> String? {
         if json is String {
-            let keyRange =
-        } else {
-            return json[key]
+            let json = json as! String
+            let keyRange = json.range(of: String.init(format: "\"%@\"", key))
+            if keyRange != nil {
+                let valueStart = json.range(of: ":", options: String.CompareOptions.init(rawValue: 0), range: Range.init(uncheckedBounds: (lower: keyRange!.upperBound, upper: json.endIndex)))
+                if valueStart != nil {
+                    var valueEnd = json.range(of: ",", options: String.CompareOptions.init(rawValue: 0), range: Range.init(uncheckedBounds: (lower: json.index(valueStart!.lowerBound, offsetBy: 1), upper: json.endIndex)))
+                    if valueEnd != nil {
+                        var value = json[json.index(valueStart!.lowerBound, offsetBy: 1) ..< valueEnd!.upperBound]
+                        value = value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                        while value.hasPrefix("\"") && !value.hasSuffix("\"") {
+                            if valueEnd == nil {
+                                break;
+                            }
+                            valueEnd = json.range(of: ",", options: String.CompareOptions.init(rawValue: 0), range: Range.init(uncheckedBounds: (lower: json.index(valueEnd!.lowerBound, offsetBy: 1), upper: json.endIndex)))
+                            value = json[json.index(valueStart!.lowerBound, offsetBy: 1) ..< valueEnd!.upperBound]
+                            value = value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                        }
+                        
+                        value = value.trimmingCharacters(in: CharacterSet.init(charactersIn: "\""))
+                        value = value.replacingOccurrences(of: "\\\\", with: "\\")
+                        value = value.replacingOccurrences(of: "\\/", with: "/")
+                        value = value.replacingOccurrences(of: "\\\"", with: "\"")
+                        value = value.replacingOccurrences(of: "\\n", with: "\n")
+                        value = value.replacingOccurrences(of: "\\r", with: "\r")
+                        value = value.replacingOccurrences(of: "\\t", with: "\t")
+                        value = value.replacingOccurrences(of: "\\f", with: "\u{000C}")
+                        value = value.replacingOccurrences(of: "\\b", with: "\u{000C}")
+                        
+                        while true {
+                            let unicode = value.range(of: "\\u")
+                            if unicode == nil || unicode!.upperBound == json.startIndex {
+                                break
+                            }
+                            
+                            var c : UInt32 = 0
+                            let hex = value.substring(with: Range.init(uncheckedBounds: (lower: unicode!.lowerBound, upper: json.index(unicode!.lowerBound, offsetBy: 4))))
+                            let scanner = Scanner.init(string: hex)
+                            scanner.scanHexInt32(&c)
+                            
+                            if c <= 0xffff {
+                                value = value.replacingCharacters(in: Range.init(uncheckedBounds: (lower: unicode!.lowerBound, upper: json.index(unicode!.lowerBound, offsetBy: 6))), with: String.init(format: "%C", unichar(c)))
+                            } else {
+                                let x = UInt16(c)
+                                let u = UInt16(c >> 16) & UInt16((1 << 5) - 1)
+                                let w : UInt16 = u - 1
+                                let high : unichar = 0xd800 | (w << 6) | x >> 10
+                                let low = UInt16(0xdc00 | (x & ((1 << 10) - 1)))
+                                
+                                value = value.replacingCharacters(in: Range.init(uncheckedBounds: (lower: unicode!.lowerBound, upper: json.index(unicode!.lowerBound, offsetBy: 6))), with: String.init(format: "%C%C", high, low))
+                            }
+                        }
+                        return value
+                    }
+                }
+            }
         }
+        return json[key] as? String
     }
     
     private func mostRecentVersionInDict(dict: [String: AnyObject]?) -> String? {
@@ -541,37 +611,37 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         checkingForNewVersion = false
         
         //get country
-        self.appStoreCountry = Locale.current.currencyCode
-        if (self.appStoreCountry == "150") {
-            self.appStoreCountry = "eu"
+        appStoreCountry = Locale.current.currencyCode
+        if (appStoreCountry == "150") {
+            appStoreCountry = "eu"
             //} else if (self.appStoreCountry?.replacingOccurrences(of: "[A-Za-z]{2}", with: "", options: .regularExpression, range: nil) {
-        } else if (self.appStoreCountry == "GI") {
-            self.appStoreCountry = "GB"
+        } else if (appStoreCountry == "GI") {
+            appStoreCountry = "GB"
         }
         
         //application version (use short version preferentially)
-        self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        applicationVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         /*
         if (self.applicationVersion?.isEmpty) {
             self.applicationVersion = Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as! String
         }
         */
-        //bundle id
-        self.applicationBundleID = Bundle.main.bundleIdentifier!
         
         
         //enable verbose logging in debug mode
-        self.verboseLogging = true
+        verboseLogging = true
         
-        self.remoteVersionsPlistURL = String()
+        remoteVersionsPlistURL = String()
         
         super.init()
+        //bundle id
+        applicationBundleID = Bundle.main.bundleIdentifier!
 
         NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground), name: Notification.Name.UIApplicationWillEnterForeground, object: nil)
         
 
         //app launched
-        self.performSelector(onMainThread: #selector(applicationLaunched), with: nil, waitUntilDone: false)
+        performSelector(onMainThread: #selector(applicationLaunched), with: nil, waitUntilDone: false)
         
     }
     

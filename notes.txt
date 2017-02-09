@@ -1,0 +1,19 @@
+object copy
+
+plist serial / deserialization
+
+do try catch
+
+optional protocal with optional functions
+
+Core Data : CF <-> NS bridging
+
+static var in func wordaround : use struct
+
+??
+
+singleton
+
+synchronized, autoreleasepool, threading, gcd?
+
+
