@@ -29,7 +29,7 @@ let iVersionLastRemindedKey = "iVersionLastReminded"
 let iVersionMacAppStoreBundleID = "com.apple.appstore"
 let iVersionAppLookupURLFormat = "https://itunes.apple.com/%@/lookup"
 
-let iVersioniOSAppStoreURLFormat = "itms-apps://itunes.apple.com/app/id%@"
+let iVersioniOSAppStoreURLFormat = "itms-apps://itunes.apple.com/app/id%d"
 let iVersionMacAppStoreURLFormat = "macappstore://itunes.apple.com/app/id%@"
 
 

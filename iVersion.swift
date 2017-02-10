@@ -114,11 +114,9 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             UserDefaults.standard.synchronize()
         }
     }
-    var updateURL: URL? {
-        get {
-            return URL(string: String(format: iVersioniOSAppStoreURLFormat, self.appStoreID!))
-        }
-    }
+    lazy var updateURL : URL? = {
+        return URL(string: String(format: iVersioniOSAppStoreURLFormat, self.appStoreID!))
+    }()
     var viewedVersionDetails: Bool? {
         get {
             return UserDefaults.standard.object(forKey: iVersionLastVersionKey) as? Bool
@@ -239,7 +237,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         if buttonIndex == downloadButtonIndex {
             lastReminded = nil
             delegate?.iVersionUserDidAttemptToDownloadUpdate?(version: latestVersion)
-            if let _ = delegate?.iVersionShouldOpenAppStore?() {
+            if delegate?.iVersionShouldOpenAppStore?() != true {
                 _ = openAppPageInAppStore()
             }
         } else if buttonIndex == ignoreButtonIndex {
@@ -309,17 +307,20 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         let url = URL(string: iTunesServiceURL)
         //let request = URLRequest(url: url!, cachePolicy: URLRequest.CachePolicy.reloadIgnoringLocalCacheData, timeoutInterval: REQUEST_TIMEOUT)
         
-        URLSession.shared.dataTask(with: url!) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: url!) { (data, response, error) in
             var statusCode = 0
             if let httpResponse = response as? HTTPURLResponse {
                 statusCode = httpResponse.statusCode
             }
             if data != nil && statusCode == 200 {
                 do {
-                    let json = try JSONSerialization.data(withJSONObject: data as Any, options: JSONSerialization.WritingOptions(rawValue: 0)) as AnyObject
-                    if let bundleID = self.value(forKey: "bundleId", inJSON: json) {
+                    //let jsonDict = try JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) as! [String: AnyObject]
+                    // FIXME: has to use NSDictionary?
+                    let jsonDict = try JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions(rawValue: 0)) as? NSDictionary
+                    let json = (jsonDict?["results"] as? NSArray)?.lastObject as? NSDictionary
+                    if let bundleID = json?["bundleId"] as? String {
                         if bundleID == self.applicationBundleID {
-                            if let minimumSupportedOSVersion = self.value(forKey: "minimumOsVersion", inJSON: json) {
+                            if let minimumSupportedOSVersion = json?["minimumOsVersion"] as? String {
                                 let systemVersion = UIDevice.current.systemVersion
                                 let osVersionSupported = systemVersion.compare(minimumSupportedOSVersion, options: .numeric) != ComparisonResult.orderedAscending
                                 if osVersionSupported != true {
@@ -327,14 +328,14 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                                     // error = NSError.errorWithDomain...
                                 }
                                 
-                                let releaseNotes = self.value(forKey: "releaseNotes", inJSON: json) as AnyObject?
-                                latestVersion = self.value(forKey: "version", inJSON: json)
-                                if latestVersion != nil && osVersionSupported {
-                                    versions = [latestVersion!: releaseNotes!]
+                                let releaseNotes = json?["releaseNotes"] as? String
+                                latestVersion = json?["version"] as? String
+                                if latestVersion?.isEmpty == false && osVersionSupported {
+                                    versions = [latestVersion!: releaseNotes! as AnyObject]
                                 }
                                 
-                                if self.appStoreID != nil {
-                                    let appStoreIDString = self.value(forKey: "trackId", inJSON: json)
+                                if self.appStoreID == nil {
+                                    let appStoreIDString = json?["trackId"] as? String
                                     self.performSelector(onMainThread: #selector(self.setAppStoreIDOnMainThread(appStoreIDString:)), with: appStoreIDString, waitUntilDone: true)
                                     if self.verboseLogging {
                                         print("iVersion found the app on iTunes. The App Store ID is \(appStoreIDString)")
@@ -362,7 +363,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                             print("iVersion will check \(self.remoteVersionsPlistURL) for \(self.appStoreID != nil ? "release notes" : "a new app version")")
                         }
                         let url = URL(string: self.remoteVersionsPlistURL)
-                        URLSession.shared.dataTask(with: url!, completionHandler: { (data0, response0, error0) in
+                        let task0 = URLSession.shared.dataTask(with: url!, completionHandler: { (data0, response0, error0) in
                             if data0 != nil {
                                 do {
                                     var plistVersions = try PropertyListSerialization.propertyList(from: data0!, options: [], format: nil) as? [String: AnyObject]
@@ -384,6 +385,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                                 }
                             }
                         })
+                        task0.resume()
                     }
                 } catch {
                     print("json serialization error.")
@@ -394,6 +396,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             self.performSelector(onMainThread: #selector(setter: self.lastChecked), with: Date(), waitUntilDone: true)
             self.performSelector(onMainThread: #selector(self.downloadedVersionsData), with: nil, waitUntilDone: true)
         }
+        task.resume()
         
         objc_sync_exit(self)
     }
@@ -401,7 +404,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
     @objc private func setAppStoreIDOnMainThread(appStoreIDString: String) {
         appStoreID = UInt(appStoreIDString)
     }
-    
+    /*
     private func value(forKey key: String, inJSON json: AnyObject) -> String? {
         if json is String {
             let json = json as! String
@@ -462,13 +465,13 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         }
         return json[key] as? String
     }
-    
+    */
     private func mostRecentVersionInDict(dict: [String: AnyObject]?) -> String? {
          return dict?.keys.sorted(by: {(s0, s1) -> Bool in return s0.localizedStandardCompare(s1) == .orderedAscending}).last
     }
     
     private func versionDetailsInDict(version: String?, dict: [String: AnyObject]?) -> String? {
-        if version != nil {
+        if version?.isEmpty == false {
             let versionData = dict?[version!]
             if versionData is String {
                 return (versionData as! String)
@@ -486,17 +489,16 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         }
         var newVersionFound = false
         var details = String()
-        if let versions = dict?.keys.sorted(by: {(s0, s1) -> Bool in return s0.localizedStandardCompare(s1) == .orderedAscending}) {
-            for version in versions {
+        let versions = dict?.keys.sorted(by: {(s0, s1) -> Bool in return s0.localizedStandardCompare(s1) == .orderedAscending})
+        if versions?.isEmpty == false {
+            for version in versions! {
                 if version.compare(lastVersion) == .orderedDescending {
                     newVersionFound = true
                     if groupNotesByVersion {
                         details += (versionLabelFormat?.replacingOccurrences(of: "%@", with: version))!
                         details += "\n\n"
                     }
-                    if let d = versionDetailsInDict(version: version, dict: dict) {
-                        details += d
-                    }
+                    details += versionDetailsInDict(version: version, dict: dict) ?? ""
                     details += "\n"
                     if groupNotesByVersion {
                         details += "\n"
@@ -526,7 +528,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
             //no longer checking
             checkingForNewVersion = false
             //check if data downloaded
-            if remoteVersionsDict == nil {
+            if remoteVersionsDict?.isEmpty != false {
                 //log the error
                 if downloadError != nil {
                     print("iVersion update check failed because: \(downloadError!.localizedDescription)")
@@ -538,15 +540,16 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                 return
             }
             //get version details
+            let details = versionDetailsSince(lastVersion: applicationVersion, dict: remoteVersionsDict)
             let mostRecentVersion = mostRecentVersionInDict(dict: remoteVersionsDict)
-            if let details = versionDetailsInDict(version: applicationVersion, dict: remoteVersionsDict) {
+            if details?.isEmpty == false {
                 //inform delegate of new version
                 delegate?.iVersionDidDetectNewVersion?(version: mostRecentVersion, versionDetails: details)
 
                 //check if ignored
                 var showDetails = !(ignoredVersion == mostRecentVersion) || previewMode
                 if showDetails {
-                    showDetails = (delegate?.iVersionShouldDisplayNewVersion?(version: mostRecentVersion, versionDetails: details))!
+                    showDetails = delegate?.iVersionShouldDisplayNewVersion?(version: mostRecentVersion, versionDetails: details) ?? showDetails
                     if !showDetails && verboseLogging {
                         print("iVersion did not display the new version because the iVersionShouldDisplayNewVersion:details: delegate method returned NO")
                     }
@@ -555,7 +558,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
                 }
                 
                 //show details
-                if showDetails && visibleRemoteAlert != nil {
+                if showDetails && visibleRemoteAlert == nil {
                     var title = updateAvailableTitle
                     if !groupNotesByVersion {
                         title = title?.appendingFormat(" (%@)", mostRecentVersion!)
@@ -611,7 +614,7 @@ class iVersion : NSObject, SKStoreProductViewControllerDelegate {
         checkingForNewVersion = false
         
         //get country
-        appStoreCountry = Locale.current.currencyCode
+        appStoreCountry = Locale.current.regionCode
         if (appStoreCountry == "150") {
             appStoreCountry = "eu"
             //} else if (self.appStoreCountry?.replacingOccurrences(of: "[A-Za-z]{2}", with: "", options: .regularExpression, range: nil) {
